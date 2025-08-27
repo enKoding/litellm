@@ -1,3 +1,4 @@
+version: "3.11"
 services:
   litellm:
     build:
@@ -12,13 +13,13 @@ services:
     # command:
     #  - "--config=/app/config.yaml"
     ##############################################
-    ports:
-      - "4000:4000" # Map the container port to the host, change the host port if necessary
+    # ports:
+    #   - "4000:4000" # Map the container port to the host, change the host port if necessary
     environment:
       DATABASE_URL: "postgresql://llmproxy:dbpassword9090@db:5432/litellm"
       STORE_MODEL_IN_DB: "True" # allows adding models to proxy via UI
     env_file:
-      - .env # Load local .env file
+      - ../volumes/LiteLLM/.env # Load local .env file
     depends_on:
       - db  # Indicates that this service depends on the 'db' service, ensuring 'db' starts first
     healthcheck:  # Defines the health check configuration for the container
@@ -27,6 +28,17 @@ services:
       timeout: 10s   # Health check command times out after 10 seconds
       retries: 3     # Retry up to 3 times if health check fails
       start_period: 40s  # Wait 40 seconds after container start before beginning health checks
+    networks:
+      - enkoding_litellm
+      - enkoding_traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=enkoding_traefik"
+      - "traefik.http.routers.litellm.entrypoints=websecure"
+      - "traefik.http.routers.litellm.rule=Host(`litellm.enkoding.io`)"
+      - "traefik.http.routers.litellm.tls.certresolver=mydns"
+      - "traefik.http.routers.litellm.service=litellm"
+      - "traefik.http.services.litellm.loadbalancer.server.port=4000"
 
   db:
     image: postgres:16
@@ -36,20 +48,20 @@ services:
       POSTGRES_DB: litellm
       POSTGRES_USER: llmproxy
       POSTGRES_PASSWORD: dbpassword9090
-    ports:
-      - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data # Persists Postgres data across container restarts
+      - ../volumes/PostgreSQL:/var/lib/postgresql/data # Persists Postgres data across container restarts
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -d litellm -U llmproxy"]
       interval: 1s
       timeout: 5s
       retries: 10
+    networks:
+      - enkoding_litellm
 
   prometheus:
     image: prom/prometheus
     volumes:
-      - prometheus_data:/prometheus
+      - ../volumes/Prometheus:/prometheus
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
@@ -57,10 +69,12 @@ services:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
       - "--storage.tsdb.retention.time=15d"
-    restart: always
+    networks:
+      - enkoding_litellm
 
-volumes:
-  prometheus_data:
-    driver: local
-  postgres_data:
-    name: litellm_postgres_data # Named volume for Postgres data persistence
+
+networks:
+  enkoding_traefik:
+    external: true
+  enkoding_litellm:
+    internal: true
