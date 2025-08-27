@@ -42,6 +42,7 @@ const sidebars = {
           "proxy/guardrails/model_armor",
           "proxy/guardrails/openai_moderation",
           "proxy/guardrails/pangea",
+          "proxy/guardrails/pillar_security",
           "proxy/guardrails/pii_masking_v2",
           "proxy/guardrails/panw_prisma_airs",
           "proxy/guardrails/secret_detection",
@@ -64,6 +65,7 @@ const sidebars = {
       label: "[Beta] Prompt Management",
       items: [
         "proxy/prompt_management",
+        "proxy/native_litellm_prompt",
         "proxy/custom_prompt_management"
       ].sort()
     },
@@ -74,16 +76,18 @@ const sidebars = {
         "tutorials/openweb_ui",
         "tutorials/openai_codex",
         "tutorials/litellm_gemini_cli",
+        "tutorials/litellm_qwen_code_cli",
         "tutorials/github_copilot_integration",
         "tutorials/claude_responses_api",
+        "tutorials/cost_tracking_coding",
       ]
     },
-    
+
   ],
   // But you can create a sidebar manually
   tutorialSidebar: [
     { type: "doc", id: "index" }, // NEW
-    
+
     {
       type: "category",
       label: "LiteLLM Proxy Server",
@@ -104,6 +108,7 @@ const sidebars = {
           type: "category",
           label: "Setup & Deployment",
           items: [
+            "proxy/quick_start",
             "proxy/deploy",
             "proxy/prod",
             "proxy/cli",
@@ -210,7 +215,7 @@ const sidebars = {
             "proxy/dynamic_logging"
           ],
         },
-        
+
         {
           type: "category",
           label: "Secret Managers",
@@ -368,7 +373,14 @@ const sidebars = {
             "providers/azure/azure_embedding",
           ]
         },
-        "providers/azure_ai",
+        {
+          type: "category",
+          label: "Azure AI",
+          items: [
+            "providers/azure_ai",
+            "providers/azure_ai_img",
+          ]
+        },
         {
           type: "category",
           label: "Vertex AI",
@@ -384,6 +396,7 @@ const sidebars = {
           items: [
             "providers/gemini",
             "providers/google_ai_studio/files",
+            "providers/google_ai_studio/image_gen",
             "providers/google_ai_studio/realtime",
           ]
         },
@@ -462,10 +475,12 @@ const sidebars = {
         "providers/custom_llm_server",
         "providers/petals",
         "providers/snowflake",
+        "providers/gradient_ai",
         "providers/featherless_ai",
         "providers/nebius",
         "providers/dashscope",
-        "providers/bytez"
+        "providers/bytez",
+        "providers/oci",
       ],
     },
     {
@@ -482,6 +497,7 @@ const sidebars = {
         "completion/vision",
         "completion/json_mode",
         "reasoning_content",
+        "completion/computer_use",
         "completion/prompt_caching",
         "completion/predict_outputs",
         "completion/knowledgebase",
@@ -498,7 +514,7 @@ const sidebars = {
 
       ]
     },
-    
+
     {
       type: "category",
       label: "Routing, Loadbalancing & Fallbacks",
@@ -508,7 +524,7 @@ const sidebars = {
         description: "Learn how to load balance, route, and set fallbacks for your LLM requests",
         slug: "/routing-load-balancing",
       },
-      items: ["routing", "scheduler", "proxy/load_balancing", "proxy/reliability", "proxy/timeout", "proxy/tag_routing", "proxy/provider_budget_routing", "wildcard_routing"],
+      items: ["routing", "scheduler", "proxy/load_balancing", "proxy/reliability", "proxy/timeout", "proxy/auto_routing", "proxy/tag_routing", "proxy/provider_budget_routing", "wildcard_routing"],
     },
     {
       type: "category",
@@ -529,7 +545,7 @@ const sidebars = {
         },
       ],
     },
-    
+
     {
       type: "category",
       label: "Load Testing",
@@ -546,6 +562,8 @@ const sidebars = {
       items: [
         "tutorials/openweb_ui",
         "tutorials/openai_codex",
+        "tutorials/litellm_gemini_cli",
+        "tutorials/litellm_qwen_code_cli",
         "tutorials/anthropic_file_usage",
         "tutorials/default_team_self_serve",
         "tutorials/msft_sso",

@@ -273,6 +273,16 @@ class LiteLLMProxyRequestSetup:
         return None
 
     @staticmethod
+    def _get_num_retries_from_request(headers: dict) -> Optional[int]:
+        """
+        Workaround for client request from Vercel's AI SDK.
+        """
+        num_retries_header = headers.get("x-litellm-num-retries", None)
+        if num_retries_header is not None:
+            return int(num_retries_header)
+        return None
+
+    @staticmethod
     def _get_forwardable_headers(
         headers: Union[Headers, dict],
     ):
@@ -375,6 +385,29 @@ class LiteLLMProxyRequestSetup:
         return returned_headers
 
     @staticmethod
+    def add_headers_to_llm_call_by_model_group(
+        data: dict, headers: dict, user_api_key_dict: UserAPIKeyAuth
+    ) -> dict:
+        """
+        Add headers to the LLM call by model group
+        """
+        data_model = data.get("model")
+        if (
+            data_model is not None
+            and litellm.model_group_settings is not None
+            and litellm.model_group_settings.forward_client_headers_to_llm_api
+            is not None
+            and data_model
+            in litellm.model_group_settings.forward_client_headers_to_llm_api
+        ):
+            _headers = LiteLLMProxyRequestSetup.add_headers_to_llm_call(
+                headers, user_api_key_dict
+            )
+            if _headers != {}:
+                data["headers"] = _headers
+        return data
+
+    @staticmethod
     def add_litellm_data_for_backend_llm_call(
         *,
         headers: dict,
@@ -407,6 +440,10 @@ class LiteLLMProxyRequestSetup:
         if timeout is not None:
             data["timeout"] = timeout
 
+        num_retries = LiteLLMProxyRequestSetup._get_num_retries_from_request(headers)
+        if num_retries is not None:
+            data["num_retries"] = num_retries
+
         return data
 
     @staticmethod
@@ -425,7 +462,7 @@ class LiteLLMProxyRequestSetup:
             user_api_key_request_route=user_api_key_dict.request_route,
         )
         return user_api_key_logged_metadata
-    
+
     @staticmethod
     def add_user_api_key_auth_to_request_metadata(
         data: dict,
@@ -443,9 +480,7 @@ class LiteLLMProxyRequestSetup:
         data[_metadata_variable_name].update(user_api_key_logged_metadata)
         data[_metadata_variable_name][
             "user_api_key"
-        ] = (
-            user_api_key_dict.api_key
-        )  # this is just the hashed token
+        ] = user_api_key_dict.api_key  # this is just the hashed token
 
         data[_metadata_variable_name]["user_api_end_user_max_budget"] = getattr(
             user_api_key_dict, "end_user_max_budget", None
@@ -608,6 +643,11 @@ async def add_litellm_data_to_request(  # noqa: PLR0915
             user_api_key_dict=user_api_key_dict,
             general_settings=general_settings,
         )
+    )
+
+    # check for forwardable headers
+    data = LiteLLMProxyRequestSetup.add_headers_to_llm_call_by_model_group(
+        data=data, headers=_headers, user_api_key_dict=user_api_key_dict
     )
 
     # Parse user info from headers
@@ -801,7 +841,10 @@ async def add_litellm_data_to_request(  # noqa: PLR0915
                 data[k] = v
 
     # Add disabled callbacks from key metadata
-    if user_api_key_dict.metadata and "litellm_disabled_callbacks" in user_api_key_dict.metadata:
+    if (
+        user_api_key_dict.metadata
+        and "litellm_disabled_callbacks" in user_api_key_dict.metadata
+    ):
         disabled_callbacks = user_api_key_dict.metadata["litellm_disabled_callbacks"]
         if disabled_callbacks and isinstance(disabled_callbacks, list):
             data["litellm_disabled_callbacks"] = disabled_callbacks

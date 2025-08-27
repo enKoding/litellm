@@ -854,7 +854,7 @@ class VertexGeminiConfig(VertexAIBaseConfig, BaseConfig):
                     function = _function_chunk
                 else:
                     _tool_response_chunk = ChatCompletionToolCallChunk(
-                        id=f"call_{str(uuid.uuid4())}",
+                        id=f"call_{uuid.uuid4().hex[:28]}",
                         type="function",
                         function=_function_chunk,
                         index=cumulative_tool_call_idx,
@@ -1000,6 +1000,7 @@ class VertexGeminiConfig(VertexAIBaseConfig, BaseConfig):
             GenerateContentResponseBody, BidiGenerateContentServerMessage
         ],
     ) -> Usage:
+
         if (
             completion_response is not None
             and "usageMetadata" not in completion_response
@@ -1038,6 +1039,16 @@ class VertexGeminiConfig(VertexAIBaseConfig, BaseConfig):
                     text_tokens = detail.get("tokenCount", 0)
         if "thoughtsTokenCount" in usage_metadata:
             reasoning_tokens = usage_metadata["thoughtsTokenCount"]
+
+        ## adjust 'text_tokens' to subtract cached tokens
+        if (
+            (audio_tokens is None or audio_tokens == 0)
+            and text_tokens is not None
+            and text_tokens > 0
+            and cached_tokens is not None
+        ):
+            text_tokens = text_tokens - cached_tokens
+
         prompt_tokens_details = PromptTokensDetailsWrapper(
             cached_tokens=cached_tokens,
             audio_tokens=audio_tokens,
@@ -1077,10 +1088,8 @@ class VertexGeminiConfig(VertexAIBaseConfig, BaseConfig):
         elif (
             finish_reason and finish_reason in mapped_finish_reason.keys()
         ):  # vertex ai
-
             return mapped_finish_reason[finish_reason]
         else:
-
             return "stop"
 
     @staticmethod
@@ -1175,12 +1184,14 @@ class VertexGeminiConfig(VertexAIBaseConfig, BaseConfig):
                 if reasoning_content is not None:
                     chat_completion_message["reasoning_content"] = reasoning_content
 
-                functions, tools, cumulative_tool_call_index = (
-                    VertexGeminiConfig._transform_parts(
-                        parts=candidate["content"]["parts"],
-                        cumulative_tool_call_idx=cumulative_tool_call_index,
-                        is_function_call=is_function_call(standard_optional_params),
-                    )
+                (
+                    functions,
+                    tools,
+                    cumulative_tool_call_index,
+                ) = VertexGeminiConfig._transform_parts(
+                    parts=candidate["content"]["parts"],
+                    cumulative_tool_call_idx=cumulative_tool_call_index,
+                    is_function_call=is_function_call(standard_optional_params),
                 )
 
             if "logprobsResult" in candidate:
